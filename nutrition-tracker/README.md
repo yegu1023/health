@@ -37,3 +37,6 @@
 ## GitHub 업로드
 
 ZIP을 풀고 nutrition-tracker 폴더 안 app.js, index.html, food-worker.js, README.md, data 폴더를 저장소의 기존 nutrition-tracker 폴더에 덮어 올리세요. data 폴더까지 반드시 포함하세요. 배포 완료 후 강력 새로고침을 합니다.
+
+## v4 Supabase
+로그인·계정별 서버 저장·충돌 방지·기존 브라우저 기록 가져오기를 추가했습니다. 연결 순서는 SUPABASE-START.md를 참고하세요. 위 v3의 Supabase 미연결 안내는 v4에서 대체됩니다.
