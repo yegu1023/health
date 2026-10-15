@@ -1,0 +1,26 @@
+'use strict';
+function publicRecord(a){return {id:'public-'+a[0],name:a[1],base:parseFloat(a[3]),unit:a[3].endsWith('ml')?'ml':'g',kcal:a[4],c:a[5],p:a[6],f:a[7],estimate:a.slice(4,8).includes(null),source:a[10],sourceDate:a[11],maker:a[2]}}
+let batchItems=[],batchMeal='아침',batchProfile=null,batchDate=null;
+addFood=function(meal){batchItems=[];batchMeal=meal;batchProfile=typeof activeProfile==='undefined'?null:activeProfile;batchDate=date;showBatch()};
+function stageFood(food,qty){if(!Number.isFinite(qty)||qty<=0)throw Error('0보다 큰 섭취량을 입력해주세요.');if(['kcal',...fields].some(k=>food[k]===null||!Number.isFinite(+food[k])||+food[k]<0))throw Error('누락 영양값을 보완해주세요.');batchItems.push({...food,id:uid(),foodId:food.foodId||food.id,qty,meal:batchMeal})}
+function commitBatch(){if(!batchItems.length)throw Error('음식을 한 개 이상 담아주세요.');if(date!==batchDate||(typeof activeProfile!=='undefined'&&activeProfile!==batchProfile))throw Error('사람 또는 날짜가 바뀌었습니다. 다시 열어주세요.');const items=structuredClone(batchItems);mutate(x=>{x.items.push(...items);x.complete=false});batchItems=[];return items.length}
+function batchForm(food){
+ modal('식품 확인 · 목록에 담기',inp('식품명','name',food.name,'text')+`<p class="muted">${esc(food.maker||'')} · ${food.base}${esc(food.unit)} 기준</p>`+inp('영양 기준량','base',food.base)+'<label>단위</label><select name="unit">'+['g','ml','개','팩'].map(u=>'<option '+(u===food.unit?'selected':'')+'>'+u+'</option>').join('')+'</select>'+inp('실제 섭취량','qty',food.base)+['kcal',...fields].map((k,i)=>inp(['칼로리 kcal','탄수화물 g','단백질 g','지방 g'][i],k,food[k]??'')).join('')+'<p class="note">빈 영양값은 제품 영양표를 확인해 보완해주세요.</p>',fd=>{
+ const v={...food,name:fd.get('name').trim(),base:+fd.get('base'),unit:fd.get('unit')};if(!Number.isFinite(v.base)||v.base<=0)throw Error('기준량은 0보다 커야 합니다.');if(!v.name)throw Error('식품명을 입력해주세요.');for(const k of ['kcal',...fields]){if(!String(fd.get(k)).trim())throw Error('누락된 영양값을 입력해주세요.');v[k]=+fd.get(k)}stageFood(v,+fd.get('qty'));showBatch();return false;
+ });document.querySelector('#modal .primary[type=submit]').textContent='목록에 담기';
+ const m=document.querySelector('#modal');m.querySelector('#cancel').onclick=m.querySelector('#close').onclick=showBatch;
+}
+function showBatch(){
+ const m=document.querySelector('#modal');
+ m.innerHTML=`<form id="batchForm"><div class="row"><h2>${esc(batchMeal)} · 음식 여러 개 추가</h2><button type="button" id="batchClose">✕</button></div><button type="button" class="primary full" id="batchSearch">공공 식품 DB 검색</button><label>내 식품 선택</label><select id="batchFood">${db.foods.map(f=>`<option value="${esc(f.id)}">${esc(f.name)} (${f.base}${esc(f.unit)})</option>`).join('')}</select><label id="batchQtyLabel">섭취량</label><div class="row"><input id="batchQty" type="number" min="0.1" step="any" value="100"><button type="button" id="batchAdd">＋ 목록에 담기</button></div><button type="button" class="link" id="batchDirect">직접 입력해서 담기</button><h3>담은 음식 ${batchItems.length}개</h3><p class="note">내 식품 선택 후 ‘목록에 담기’를 누르세요. 아래 목록을 마지막에 한 번에 저장합니다.</p><div id="batchList">${batchItems.map((f,i)=>`<div class="listitem"><div class="row"><b>${esc(f.name)}</b><button type="button" data-batch-remove="${i}">빼기</button></div><div class="row"><span>${fmt(f.kcal*f.qty/f.base)} kcal</span><label><input aria-label="${esc(f.name)} 섭취량" type="number" min="0.1" step="any" data-batch-qty="${i}" value="${f.qty}"> ${esc(f.unit)}</label></div></div>`).join('')||'<p class="muted">담은 음식이 없습니다.</p>'}</div><div class="row"><b>총 ${fmt(totals({items:batchItems}).kcal)} kcal</b><span>선택한 음식 ${batchItems.length}개</span></div><div class="actions"><button class="primary" type="submit" ${batchItems.length?'':'disabled'}>담은 음식 한 번에 저장</button><button type="button" id="batchCancel">취소</button></div></form>`;
+ if(!m.open)m.showModal();
+ const sync=()=>{const f=db.foods.find(x=>x.id===m.querySelector('#batchFood').value);m.querySelector('#batchQty').value=f?.base||100;m.querySelector('#batchQtyLabel').textContent='섭취량 ('+(f?.unit||'g')+')'};sync();m.querySelector('#batchFood').onchange=sync;
+ m.querySelector('#batchAdd').onclick=()=>{try{const f=db.foods.find(x=>x.id===m.querySelector('#batchFood').value);if(!f)throw Error('식품을 선택해주세요.');stageFood(f,+m.querySelector('#batchQty').value);showBatch()}catch(e){toast(e.message)}};
+ m.querySelector('#batchSearch').onclick=()=>searchPublicFood(batchMeal,a=>batchForm(publicRecord(a)),showBatch);
+ m.querySelector('#batchDirect').onclick=()=>batchForm({id:uid(),name:'',base:100,unit:'g',kcal:0,c:0,p:0,f:0,estimate:true});
+ m.querySelectorAll('[data-batch-remove]').forEach(b=>b.onclick=()=>{batchItems.splice(+b.dataset.batchRemove,1);showBatch()});
+ m.querySelectorAll('[data-batch-qty]').forEach(el=>el.onchange=()=>{if(!Number.isFinite(+el.value)||+el.value<=0)return toast('0보다 큰 양을 입력해주세요.');batchItems[+el.dataset.batchQty].qty=+el.value;showBatch()});
+ const close=()=>{if(batchItems.length&&!confirm('담은 목록을 취소할까요? 아직 식단에 저장되지 않았습니다.'))return;batchItems=[];m.close()};m.querySelector('#batchClose').onclick=m.querySelector('#batchCancel').onclick=close;
+ m.oncancel=e=>{e.preventDefault();close()};
+ m.querySelector('#batchForm').onsubmit=e=>{e.preventDefault();try{const count=commitBatch();m.close();m.oncancel=null;render();toast(count+'개 음식을 저장했습니다.')}catch(e){toast(e.message)}};
+}
