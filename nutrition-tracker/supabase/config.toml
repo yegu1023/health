@@ -1,0 +1,2 @@
+[functions.analyze-meal]
+verify_jwt = false
