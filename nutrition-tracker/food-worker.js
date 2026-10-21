@@ -14,9 +14,10 @@ async function load(){
 }
 onmessage=async({data})=>{try{
  if(!loading)loading=load().catch(e=>{loading=null;rows=[];throw e});await loading;
- const terms=norm(data.q).split(/[,，]/).filter(Boolean);const words=data.q.toLowerCase().trim().split(/\s+/).map(norm).filter(Boolean);
+ const words=data.q.toLowerCase().trim().split(/\s+/).map(norm).filter(Boolean),query=norm(data.q);
  let count=0,matches=[];
- for(const row of rows)if(words.every(w=>row.key.includes(w))){count++;if(matches.length<80)matches.push(row.a)}
- matches.sort((a,b)=>(a.slice(4,8).includes(null)?1:0)-(b.slice(4,8).includes(null)?1:0));
+ const score=a=>{const name=norm(a[1]),general=a[8]!=='가공식품';return (name===query?0:name.startsWith(query)?10:30)+(general?0:20)+(a.slice(4,8).includes(null)?100:0)+Math.min(20,name.length/10)};
+ for(const row of rows){const general=row.a[8]!=='가공식품';if(data.category==='general'&&!general||data.category==='product'&&general)continue;if(words.every(w=>row.key.includes(w))){count++;matches.push({a:row.a,score:score(row.a)});if(matches.length>160){matches.sort((a,b)=>a.score-b.score);matches.length=80}}}
+ matches.sort((a,b)=>a.score-b.score);matches=matches.slice(0,80).map(r=>r.a);
  postMessage({type:'result',id:data.id,count,rows:matches});
  }catch(e){postMessage({type:'error',id:data.id,message:e.message})}};
