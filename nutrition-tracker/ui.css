@@ -21,3 +21,4 @@
 .ui-v17 .sheet-tab.selected{color:#2878ed;border-color:#2878ed;background:#edf4ff}
 .ui-v17 input:focus,.ui-v17 select:focus,.ui-v17 textarea:focus{outline-color:#2878ed;border-color:#2878ed;box-shadow:0 0 0 3px #2878ed22}
 .ui-v17 .day.complete{background:#eaf2ff;color:#2468c9;border-color:#2878ed}
+.ui-v17 .ui-meal-head-actions{display:flex;gap:8px;align-items:center}.ui-v17 .ui-meal-head-actions button{font-size:11px;padding:7px 9px;white-space:nowrap}.ui-v17 .completed-chip{color:#16764d;background:#e6f6ec;border:1px solid #bbdec9}.ui-v17 .coach-card h3{font-size:14px;margin:14px 0 6px}.ui-v17 .coach-card p,.ui-v17 .coach-card li{font-size:13px;line-height:1.7;overflow-wrap:anywhere}.ui-v17 .coach-card{max-width:720px;margin:14px auto}.ui-v17 .coach-card ul{padding-left:22px}

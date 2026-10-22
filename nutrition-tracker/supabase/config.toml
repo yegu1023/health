@@ -1,2 +1,5 @@
+[functions.analyze-meal]
+verify_jwt = false
+
 [functions.health-access]
 verify_jwt = false
