@@ -8,6 +8,8 @@ create table if not exists public.nutrition_coach_usage(day date primary key, at
 alter table public.nutrition_coach_cache enable row level security;
 alter table public.nutrition_coach_usage enable row level security;
 revoke all on public.nutrition_coach_cache,public.nutrition_coach_usage from anon,authenticated;
+-- Reservation runs as the function owner, but REST result writes run as service_role.
+grant select, update on table public.nutrition_coach_cache to service_role;
 create or replace function public.nutrition_coach_reserve(p_profile text,p_hash text,p_limit integer default 20)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare c public.nutrition_coach_cache; n integer; usage_day date := (now() at time zone 'Asia/Seoul')::date;
