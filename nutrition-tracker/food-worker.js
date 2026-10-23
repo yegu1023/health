@@ -1,18 +1,19 @@
 'use strict';
 let loading,rows=[];
 const norm=s=>s.toLowerCase().replace(/[\s_\-·]/g,'');
+let assetToken=0;const pendingAssets=new Map();
+function readAsset(path){return new Promise((resolve,reject)=>{const token=++assetToken;pendingAssets.set(token,{resolve,reject});postMessage({type:'asset-request',path,token})})}
 async function load(){
- const response=await fetch('data/manifest.json');if(!response.ok)throw Error('식품 데이터 목록을 불러오지 못했습니다.');
- const manifest=await response.json();
- for(let i=0;i<manifest.parts.length;i++){
-  const r=await fetch('data/'+manifest.parts[i]);if(!r.ok)throw Error('식품 데이터를 불러오지 못했습니다.');
-  const bytes=r.body.pipeThrough(new DecompressionStream('gzip'));
-  const part=JSON.parse(await new Response(bytes).text());
-  rows.push(...part.map(a=>({a,key:norm(a[1]+' '+a[2])})));
-  postMessage({type:'progress',value:Math.round((i+1)/manifest.parts.length*100)});
- }
+ const manifest=JSON.parse(new TextDecoder().decode(await readAsset('data/manifest.json')));
+ const parts=new Array(manifest.parts.length);let cursor=0,done=0;
+ async function next(){while(cursor<manifest.parts.length){const i=cursor++,buffer=await readAsset('data/'+manifest.parts[i]),bytes=new Uint8Array(buffer);let text;
+ if(bytes[0]===31&&bytes[1]===139){if(typeof DecompressionStream==='undefined')throw Error('Android System WebView 업데이트 후 다시 검색해주세요.');text=await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}else text=new TextDecoder().decode(bytes);
+ const part=JSON.parse(text);if(!Array.isArray(part))throw Error('식품 데이터 형식이 올바르지 않습니다.');parts[i]=part.map(a=>({a,key:norm(a[1]+' '+a[2])}));postMessage({type:'progress',value:Math.round(++done/manifest.parts.length*100)});
+ }}
+ const results=await Promise.allSettled(Array.from({length:3},next));const failed=results.find(r=>r.status==='rejected');if(failed)throw failed.reason;
+ rows=parts.flat();
 }
-onmessage=async({data})=>{try{
+onmessage=async({data})=>{if(data.type==='asset-response'){const request=pendingAssets.get(data.token);if(request){pendingAssets.delete(data.token);data.error?request.reject(Error(data.error)):request.resolve(data.bytes)}return}try{
  if(!loading)loading=load().catch(e=>{loading=null;rows=[];throw e});await loading;
  const words=data.q.toLowerCase().trim().split(/\s+/).map(norm).filter(Boolean),query=norm(data.q);
  let count=0,matches=[];

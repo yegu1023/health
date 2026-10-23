@@ -51,7 +51,7 @@ function searchPublicFood(meal,onPick,onBack){
  m.querySelector('#searchClose').onclick=()=>onBack?onBack():m.close();m.oncancel=e=>{if(onBack){e.preventDefault();onBack()}};
  const search=()=>{
  const q=m.querySelector('#publicQuery').value.trim();if(q.length<2){m.querySelector('#searchStatus').textContent='두 글자 이상 입력해주세요.';return}
- if(!publicWorker){try{publicWorker=new Worker('food-worker.js?v=3')}catch{m.querySelector('#searchStatus').textContent='이 브라우저에서는 검색을 지원하지 않습니다.';return}}
+ if(!publicWorker){try{publicWorker=createFoodWorker()}catch{m.querySelector('#searchStatus').textContent='이 브라우저에서는 검색을 지원하지 않습니다.';return}}
  const id=++publicRequest;m.querySelector('#searchStatus').textContent='검색 중…';m.querySelector('#searchResults').innerHTML='';
  publicWorker.onmessage=({data})=>{
  if(!m.open||!m.querySelector('#searchResults'))return;
