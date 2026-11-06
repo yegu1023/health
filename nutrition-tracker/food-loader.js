@@ -1,6 +1,6 @@
 /* Read database assets in the window so Android's asset interceptor handles them. */
 function createFoodWorker(){
- const worker=new Worker('food-worker.js?v=19.3');
+ const worker=new Worker('food-worker.js?v=21');
  worker.addEventListener('message',async event=>{
   const d=event.data;if(d.type!=='asset-request')return;event.stopImmediatePropagation();
   if(!/^data\/(manifest\.json|foods-\d{2}\.json\.gz)$/.test(d.path)){worker.postMessage({type:'asset-response',token:d.token,error:'잘못된 데이터 경로입니다.'});return}
