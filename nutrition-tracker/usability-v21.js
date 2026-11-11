@@ -32,11 +32,20 @@ function v21SyncHelp(){const state=v21SyncState();viewerModal('기록 저장 확
 function v21HasPending(ex){return ex.muscle==='유산소'?!ex.cardio?.done:ex.sets.some(s=>!s.done)}
 function v21ChooseFocus(day){const key=v21Context(),old=v21Focus.get(key);if(day.exercises.some(e=>e.id===old))return old;const ex=day.exercises.find(v21HasPending)||day.exercises[0];if(ex){v21Focus.set(key,ex.id);uiExerciseOpen.set(uiExerciseViewKey(ex.id),true)}return ex?.id}
 function v21FocusExercise(id){if(!trainDay().exercises.some(e=>e.id===id))return;v21Focus.set(v21Context(),id);uiExerciseOpen.set(uiExerciseViewKey(id),true);render();document.querySelector('.v21-current')?.scrollIntoView?.({block:'start',behavior:'smooth'})}
+function v21SetExerciseEditing(card,open){
+ const trigger=card.querySelector('.v21-ex-tools'),panel=card.querySelector('.v21-ex-tool-buttons');
+ const key=uiExerciseViewKey(trigger.dataset.ex);
+ if(open)v21EditOpen.set(key,true);else v21EditOpen.delete(key);
+ trigger.setAttribute('aria-expanded',String(open));panel.hidden=!open;card.classList.toggle('v21-editing',open);
+}
 function v21DecorateExercise(card,ex){
  const header=card.firstElementChild,oldTools=card.querySelector('.exercise-tools'),actions=card.querySelector(':scope > .actions');
- const tools=document.createElement('details');tools.className='v21-ex-tools';tools.dataset.ex=ex.id;tools.open=!!v21EditOpen.get(uiExerciseViewKey(ex.id));tools.innerHTML='<summary aria-label="'+esc(ex.name)+' 편집 도구">⋯ 편집</summary><div class="v21-ex-tool-buttons"></div>';
- const target=tools.lastElementChild;[...(oldTools?.querySelectorAll('button')||[]),...(actions?.querySelectorAll('button')||[])].forEach(b=>target.append(b));oldTools?.remove();actions?.remove();header.append(tools);
- const editKey=uiExerciseViewKey(ex.id);const edit=()=>{v21EditOpen.set(editKey,tools.open);card.classList.toggle('v21-editing',tools.open)};tools.addEventListener('toggle',edit);edit();
+ const tools=document.createElement('button');tools.type='button';tools.className='v21-ex-tools';tools.dataset.ex=ex.id;tools.textContent='⋯ 편집';tools.setAttribute('aria-label',ex.name+' 편집 도구');
+ const panel=document.createElement('div');panel.className='v21-ex-tool-buttons';panel.id='v21-ex-panel-'+ex.id;tools.setAttribute('aria-controls',panel.id);
+ const labels={exerciseUp:'↑ 종목 위로',exerciseDown:'↓ 종목 아래로',removeExercise:'종목 삭제'};
+ for(const b of [...(oldTools?.querySelectorAll('button')||[]),...(actions?.querySelectorAll('button')||[])]){if(labels[b.dataset.w])b.textContent=labels[b.dataset.w];panel.append(b)}
+ oldTools?.remove();actions?.remove();header.classList.add('v21-ex-heading');header.append(tools,panel);
+ v21SetExerciseEditing(card,v21EditOpen.has(uiExerciseViewKey(ex.id)));
  for(const row of card.querySelectorAll('.workout-set:not(.header)')){const select=row.querySelector('[data-w-field="warmup"]');if(select){const number=document.createElement('span');number.className='v21-set-number';number.textContent=select.selectedOptions[0]?.textContent||'';row.prepend(number)}}
  const previous=card.querySelector(':scope > p.note');if(previous){const detail=document.createElement('details');detail.className='v21-previous';detail.innerHTML='<summary>지난 수행 기록 보기</summary>';previous.before(detail);detail.append(previous)}
  const upcoming=ex.sets.find(s=>!s.done);if(ex.muscle!=='유산소'){const next=document.createElement('p');next.className='v21-next-set';next.textContent=upcoming?'다음 '+(ex.sets.indexOf(upcoming)+1)+'세트 · '+(upcoming.weight==null?'중량 입력':fmt(upcoming.weight)+'kg')+' × '+(upcoming.reps==null?'횟수 입력':fmt(upcoming.reps)+'회'):'이 종목의 세트를 모두 완료했습니다.';const table=card.querySelector('.workout-set.header');if(table)table.before(next);else card.append(next)}
@@ -92,6 +101,20 @@ const v21BeforeAddFood=addFood;addFood=function(meal){v21Repeat=null;v21FoodQty.
 function v21MealShortcuts(){if(tab!=='today')return;document.querySelectorAll('.ui-meal').forEach(section=>{const meal=section.querySelector('.ui-meal-toggle')?.dataset.uiMeal;if(!meal)return;const source=v21MealSources(meal).find(s=>s.meal===meal);const row=document.createElement('div');row.className='v21-meal-shortcut';row.innerHTML=`<button class="link" data-v21-repeat="${esc(meal)}">지난번처럼</button><small>${source?esc(source.label+' · '+source.items.length+'개'):'지난 식사·고정 식단 불러오기'}</small>`;section.querySelector('.ui-meal-line')?.after(row)})}
 
 const v21BeforeRender=render;render=function(){v21BeforeRender();if(typeof accessReady!=='undefined'&&!accessReady)return;document.body.classList.add('ui-v21');v21WorkoutView();v21MealShortcuts();showSyncNotice()};
+// Wait for the click so removing the inline panel doesn't move a touch target before activation.
+document.addEventListener('click',e=>{
+ const target=e.target;if(!(target instanceof Element))return;
+ const trigger=target.closest('.v21-ex-tools'),card=target.closest('.workout-exercise');
+ for(const openCard of document.querySelectorAll('.workout-exercise.v21-editing')){
+  if(openCard!==card||!target.closest('.v21-ex-tools,.v21-ex-tool-buttons,[data-w-field="warmup"],.set-order button'))v21SetExerciseEditing(openCard,false);
+ }
+ if(trigger&&card)v21SetExerciseEditing(card,trigger.getAttribute('aria-expanded')!=='true');
+},true);
+document.addEventListener('keydown',e=>{
+ if(e.key!=='Escape'||e.defaultPrevented||document.querySelector('#modal[open]'))return;
+ const card=document.querySelector('.workout-exercise.v21-editing');
+ if(card){v21SetExerciseEditing(card,false);card.querySelector('.v21-ex-tools').focus()}
+});
 document.addEventListener('click',e=>{const focus=e.target.closest('[data-v21-focus]');if(focus)return v21FocusExercise(focus.dataset.v21Focus);const repeat=e.target.closest('[data-v21-repeat]');if(repeat)return v21OpenRepeat(repeat.dataset.v21Repeat);if(e.target.closest('[data-v21-sync-help]'))return v21SyncHelp();if(e.target.closest('[data-v21-sync-retry]')){document.querySelector('#modal')?.close();syncShared();return}if(e.target.closest('[data-v21-sync-manage]')){document.querySelector('#modal')?.close();tab='manage';render()}});
 document.addEventListener('change',e=>{if(!e.target.dataset.wField)return;const ex=trainDay().exercises.find(x=>x.id===e.target.dataset.ex),card=[...document.querySelectorAll('[data-ex-card]')].find(el=>el.dataset.exCard===ex?.id);const label=card?.querySelector('.v21-next-set'),next=ex?.sets.find(s=>!s.done);if(label&&next)label.textContent='다음 '+(ex.sets.indexOf(next)+1)+'세트 · '+(next.weight==null?'중량 입력':fmt(next.weight)+'kg')+' × '+(next.reps==null?'횟수 입력':fmt(next.reps)+'회')});
 render();
