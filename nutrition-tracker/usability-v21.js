@@ -14,6 +14,7 @@ function v21SyncState(){
  if(protectionBlocked)return {kind:'error',title:'기존 기록 보호 중',detail:'원본을 보관하고 기록을 확인해주세요.'};
  if(sharedConflict)return {kind:'error',title:'기기 기록 보관됨 · 동기화 확인 필요',detail:'기록이 달라 자동 덮어쓰기를 멈췄습니다.'};
  if(sharedBusy)return {kind:'pending',title:sharedDirty?'기기 저장됨 · 서버 저장 중':'서버 기록 확인 중',detail:v21StampText()};
+ if(/자동 백업 저장/.test(sharedMessage))return {kind:'error',title:sharedDirty?'기기 저장됨 · 자동 백업 확인 필요':'자동 백업 확인 필요',detail:'현재 기록 백업으로 사본을 보관해주세요.'};
  if(/실패|오류|확인하지 못|접속 실패/.test(sharedMessage))return {kind:'error',title:sharedDirty?'기기 저장됨 · 서버 연결 확인 필요':'서버 연결 확인 필요',detail:v21StampText()};
  if(sharedDirty)return {kind:'pending',title:'기기 저장됨 · 서버 저장 대기',detail:v21StampText()};
  if(/서버 (저장|기록 확인) 완료/.test(sharedMessage))return {kind:'saved',title:'서버 저장됨',detail:v21ServerStamp()?v21StampText():'이번 접속에서 서버 기록을 확인했습니다.'};
